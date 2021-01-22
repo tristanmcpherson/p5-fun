@@ -6,7 +6,7 @@ Project to quickly get something working in [p5.js](https://p5js.org/) and [type
 
 ## Demo
 
-## **[Click here for Demo](https://gaweph.github.io/p5-typescript-starter/)**
+## **[Click here for Demo](https://tristanmcpherson.github.io/p5-fun/)**
 
 ![Demo](p5-typescript-demo.png?raw=true "Demo")
 
@@ -17,7 +17,7 @@ This is based on the [Regular Polygon](https://p5js.org/examples/form-regular-po
 ### Installing
 
 ```
-git clone https://github.com/Gaweph/p5-typescript-starter.git
+git clone https://github.com/tristanmcpherson/p5-fun.git
 ```
 
 ```
