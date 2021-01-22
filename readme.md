@@ -1,16 +1,12 @@
-# Starter Project
+# p5 Fun Effect
 
-## p5.js with Typescript
-
-Project to quickly get something working in [p5.js](https://p5js.org/) and [typescript](https://www.typescriptlang.org/)
+A simple double helix effect with sin waves in p5
 
 ## Demo
 
 ## **[Click here for Demo](https://tristanmcpherson.github.io/p5-fun/)**
 
 ![Demo](p5-fun-demo.png?raw=true "Demo")
-
-This is based on the [Regular Polygon](https://p5js.org/examples/form-regular-polygon.html) sketch available in the p5js examples
 
 ## Getting Started
 
@@ -37,7 +33,7 @@ A local version will now be running on [localhost:3000](http://localhost:3000)
 P5 is able to run in either global or instanced mode.
 https://github.com/processing/p5.js/wiki/Global-and-instance-mode
 
-This starter project now uses **Global mode** to bring it inline with most of the online resources provided by the project.
+This project now uses **Global mode** to bring it inline with most of the online resources provided by the project.
 
 As stated on the P5 wiki:
 
@@ -62,7 +58,7 @@ function draw() {
 }
 ```
 
-### Instanced Mode
+### TODO: Conver to Instanced Mode
 
 ```typescript
 var sketch = (p: p5) => {
@@ -81,5 +77,3 @@ var sketch = (p: p5) => {
 
 new p5(sketch);
 ```
-
-This starter project will work with either mode, feel free to experiment with both.
