@@ -12,6 +12,12 @@ let speedUp: number = initSpeed;
 let mouseH = initMouseH;
 let mouseS = initMouseS;
 
+
+
+
+const fps = 60;
+const dotAnimateTimeFrames = 2 * fps;
+
 function drawGradient(x: number, y: number) {
   let radius = (width) / 3;
   let h = 6;
@@ -22,19 +28,61 @@ function drawGradient(x: number, y: number) {
   }
 }
 
-function* combine<T>(array: T[], n: number, start = 0, prev: T[] = []): any {
-  if(n <= 0) {
-    yield prev;
-    return;
-  }
-
-  for(let i = start; i <= array.length - n; i++) {
-    yield* combine(array, n - 1, i + 1, [...prev, array[i]]);
-  }
-}
-
-function combine2<T>(array: T[]): [[number, number], [number, number]][] {
-  return [...combine(array, 2)];
+function k_combinations<T>(set: T[], k: number): any {
+	var i, j, combs, head, tailcombs;
+	
+	// There is no way to take e.g. sets of 5 elements from
+	// a set of 4.
+	if (k > set.length || k <= 0) {
+		return [];
+	}
+	
+	// K-sized set has only one K-sized subset.
+	if (k == set.length) {
+		return [set];
+	}
+	
+	// There is N 1-sized subsets in a N-sized set.
+	if (k == 1) {
+		combs = [];
+		for (i = 0; i < set.length; i++) {
+			combs.push([set[i]]);
+		}
+		return combs;
+	}
+	
+	// Assert {1 < k < set.length}
+	
+	// Algorithm description:
+	// To get k-combinations of a set, we want to join each element
+	// with all (k-1)-combinations of the other elements. The set of
+	// these k-sized sets would be the desired result. However, as we
+	// represent sets with lists, we need to take duplicates into
+	// account. To avoid producing duplicates and also unnecessary
+	// computing, we use the following approach: each element i
+	// divides the list into three: the preceding elements, the
+	// current element i, and the subsequent elements. For the first
+	// element, the list of preceding elements is empty. For element i,
+	// we compute the (k-1)-computations of the subsequent elements,
+	// join each with the element i, and store the joined to the set of
+	// computed k-combinations. We do not need to take the preceding
+	// elements into account, because they have already been the i:th
+	// element so they are already computed and stored. When the length
+	// of the subsequent list drops below (k-1), we cannot find any
+	// (k-1)-combs, hence the upper limit for the iteration:
+	combs = [];
+	for (i = 0; i < set.length - k + 1; i++) {
+		// head is a list that includes only our current element.
+		head = set.slice(i, i + 1);
+		// We take smaller combinations from the subsequent elements
+		tailcombs = k_combinations(set.slice(i + 1), k - 1);
+		// For each (k-1)-combination we join it with the current
+		// and store it to the set of k-combinations.
+		for (j = 0; j < tailcombs.length; j++) {
+			combs.push([...head, ...tailcombs[j]]);
+		}
+	}
+	return combs;
 }
 
 const pairs = <T>(array: Array<T>) => {
@@ -51,6 +99,9 @@ const tri = (i: number) => {
   return 1 - abs(i % 2 - 1)
 }
 
+window.addEventListener("resize", ev => {
+  resizeCanvas(windowWidth, windowHeight);
+});
 // const distance = (p1: [number, number], p2: [number, number]) => {
 //   return sqrt(pow(p2[0] - p1[0], 2) + pow(p2[1] - p1[1], 2));
 // }
@@ -61,9 +112,13 @@ function setup() {
 
   // FULLSCREEN CANVAS
   createCanvas(windowWidth, windowHeight);
+  
 
+  colorMode(HSL)
   // SETUP SOME OPTIONS
-  frameRate(60);
+  frameRate(fps);
+
+  smooth();
 
   // SPEED SLIDER
   speed = createSlider(0, 15, 3, 1);
@@ -100,7 +155,7 @@ function setup() {
 
 function mousePressed() {
   speedUp = 5;
-  mouseH = 26;
+  mouseH = 10;
   mouseS = 100;
 }
 
@@ -118,48 +173,50 @@ const distanceNormInv = (p1: [number, number], p2: [number, number], maxD: numbe
   return map(dist(...p1, ...p2), 0, maxD, 1, 0, true);
 }
 
-const colorD = (h: number, s: number, d: number, maxD: number, l1: number = 70, l2: number = 50, a: number) => {
-  const l = map(d, 0, maxD, l1, l2, true);
-  const ns = map(d, 0, maxD, 1, 0, true);
-  //const a = map(d, 0, maxD, 1, 0.1);
-  return `hsla(${h}, ${s}%, ${l}%, ${ns})`;
+const colorMap: Map<number, string> = new Map<number, string>();
+
+const colorD = (hue: number, lumMin: number = 70, lumMax: number = 50, alpha: boolean = true, distance: number, maxDistance: number) => {
+  const h = floor(map(distance, 0, maxDistance * 2, hue, hue - 40, true));
+  const l = floor(map(distance, 0, maxDistance, lumMin, lumMax, true));
+  const a = alpha ? floor(map(distance, 0, maxDistance, 100, 20, true)) / 100 : 1;
+
+  return color(h, 100, l, a);
 };
 
-const linePointDistance = (point1: [number, number], point2: [number, number], maxD: number, r1 = 70, r2 = 50, h = 222, s = 100, a: number = 0.7) => {
-  const d = dist(...point1, ...point2);
+const linePointDistance = (point1: [number, number], point2: [number, number], maxD: number, l1 = 70, l2 = 50, h = 222, alpha: boolean, saturation: number = 100) => {
+  const d = dist(point1[0], point1[1], point2[0], point2[1]);
   if (d < maxD) {
-    linePoint(point1, point2, colorD(h, s, d, maxD, r1, r2, a));
+    linePoint(point1, point2, colorD(h, l1, l2, alpha, d, maxD));
   }
 };
 
-function linePoint(point1: [number, number], point2: [number, number], strokeHex: string = "#3333CC") {
-  push();
-
+function linePoint(point1: [number, number], point2: [number, number], strokeHex: p5.Color = color("#3333CC")) {
   stroke(strokeHex);
   line(point1[0], point1[1], point2[0], point2[1]);
-
-  pop();
 }
 
 let time = 0;
+
 
 // p5 WILL HANDLE REQUESTING ANIMATION FRAMES FROM THE BROWSER AND WIL RUN DRAW() EACH ANIMATION FROME
 function draw() {
   // CLEAR BACKGROUND
   push();
 
-  background(15);
-  colorMode(HSB, 360, 100, 100);
+  background(6);
+  colorMode(HSL, 360, 100, 100);
   noStroke();
   ellipseMode(RADIUS);
 
-  drawGradient(width/2, height/2);
+  //drawGradient(width/2, height/2);
 
   pop();
 
   const mouse: [number, number] = [mouseX, mouseY];
   
   time += deltaTime/1000 * speedUp;
+
+  const aspectRatio =  height / width;
 
   const scaleY = 400;
   const middleH = height / 2;
@@ -182,15 +239,17 @@ function draw() {
 
   const pointSize = scaleY / 20;
 
-  for (var i = 1; i < pointsPerLine; i++) {
+  for (let i = 1; i < pointsPerLine; i++) {
     push();
     stroke("hsla(222, 75%, 50%, 0.5)");
 
     const topX = scaleX * (startOffset + stepX * (i + topOffset));
-    const topY = middleH + (scaleY / 2) * sin(startOffset + stepY * i + time);
+    const y = (scaleY / 2) * sin(startOffset + stepY * i + time);
+    
+    const topY = middleH + y;
 
     const bottomX = scaleX * (startOffset + stepX * i);
-    const bottomY = middleH + (scaleY / 2) * -sin(startOffset + stepY * i + time);
+    const bottomY = middleH - y;
 
     strokeWeight(pointSize * (distanceNormInv([topX, topY], mouse, scaleY * 1.5)));
     point(topX, topY);
@@ -203,34 +262,43 @@ function draw() {
     pop();
   }
 
-  const pointDistance = scaleY * 1.1;
   const lineIntersect = height / 2;
- 
+  drawInterlines(topPoints, bottomPoints, scaleY);
+  drawSelflines(topPoints, bottomPoints, scaleX);
+  drawMouselines(topPoints, bottomPoints, scaleX);
+
+}
+
+function drawInterlines(topPoints: [number, number][], bottomPoints: [number, number][], scaleY: number) {
+  const pointDistance = scaleY * 1.1;
+
   if (interLinesChecked) {
     topPoints.forEach(tp => 
       bottomPoints
         .forEach(bp => {
-          linePointDistance(tp, bp, pointDistance, 60, 0)
+          linePointDistance(tp, bp, pointDistance, 60, 0, 222, true)
         })
     );
   }
+}
 
+function drawSelflines(topPoints: [number, number][], bottomPoints: [number, number][], scaleX: number) {
   const selfLinesDistance = scaleX * 1.25;
   if (selfLinesChecked) {
-    combine2(topPoints).forEach((points => linePointDistance(points[0], points[1], selfLinesDistance)));
-    combine2(bottomPoints).forEach((points => linePointDistance(points[0], points[1], selfLinesDistance)));
+    (k_combinations(topPoints, 2) as any).forEach(((points: any) => linePointDistance(points[0], points[1], selfLinesDistance, 50, 70, 222, true)));
+    (k_combinations(bottomPoints, 2) as any).forEach(((points: any) => linePointDistance(points[0], points[1], selfLinesDistance, 50, 70, 222, true)));
   }
+}
 
-  const mouseDistance = (scaleX * 1.25 );
+function drawMouselines(topPoints: [number, number][], bottomPoints: [number, number][], scaleX: number) {
+  const mouseDistance = (scaleX * 1.25);
+  const mouse: [number, number] = [mouseX, mouseY];
 
   if (mouseLinesChecked) {
-    push();
-    stroke("#5555FF");
 
-    topPoints.forEach(tp => linePointDistance(tp, mouse, mouseDistance, 50, 30, mouseH, mouseS));
-    bottomPoints.forEach(bp => linePointDistance(bp, mouse, mouseDistance, 50, 30, mouseH, mouseS));
+    topPoints.forEach(tp => linePointDistance(tp, mouse, mouseDistance, 60, 30, 22, true));
+    bottomPoints.forEach(bp => linePointDistance(bp, mouse, mouseDistance, 60, 30, 22, true));
 
-    pop();
   }
 }
 

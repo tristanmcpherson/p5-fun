@@ -1,43 +1,3 @@
-class ColorHelper {
-    static getColorVector(c) {
-        return createVector(red(c), green(c), blue(c));
-    }
-    static rainbowColorBase() {
-        return [
-            color('red'),
-            color('orange'),
-            color('yellow'),
-            color('green'),
-            color(38, 58, 150),
-            color('indigo'),
-            color('violet')
-        ];
-    }
-    static getColorsArray(total, baseColorArray = null) {
-        if (baseColorArray == null) {
-            baseColorArray = ColorHelper.rainbowColorBase();
-        }
-        var rainbowColors = baseColorArray.map(x => this.getColorVector(x));
-        ;
-        let colours = new Array();
-        for (var i = 0; i < total; i++) {
-            var colorPosition = i / total;
-            var scaledColorPosition = colorPosition * (rainbowColors.length - 1);
-            var colorIndex = Math.floor(scaledColorPosition);
-            var colorPercentage = scaledColorPosition - colorIndex;
-            var nameColor = this.getColorByPercentage(rainbowColors[colorIndex], rainbowColors[colorIndex + 1], colorPercentage);
-            colours.push(color(nameColor.x, nameColor.y, nameColor.z));
-        }
-        return colours;
-    }
-    static getColorByPercentage(firstColor, secondColor, percentage) {
-        var firstColorCopy = firstColor.copy();
-        var secondColorCopy = secondColor.copy();
-        var deltaColor = secondColorCopy.sub(firstColorCopy);
-        var scaledDeltaColor = deltaColor.mult(percentage);
-        return firstColorCopy.add(scaledDeltaColor);
-    }
-}
 let speed;
 let mouseLinesChecked = true;
 let interLinesChecked = true;
@@ -48,6 +8,8 @@ let initMouseS = 0;
 let speedUp = initSpeed;
 let mouseH = initMouseH;
 let mouseS = initMouseS;
+const fps = 60;
+const dotAnimateTimeFrames = 2 * fps;
 function drawGradient(x, y) {
     let radius = (width) / 3;
     let h = 6;
@@ -57,17 +19,30 @@ function drawGradient(x, y) {
         h = (h + 0.01);
     }
 }
-function* combine(array, n, start = 0, prev = []) {
-    if (n <= 0) {
-        yield prev;
-        return;
+function k_combinations(set, k) {
+    var i, j, combs, head, tailcombs;
+    if (k > set.length || k <= 0) {
+        return [];
     }
-    for (let i = start; i <= array.length - n; i++) {
-        yield* combine(array, n - 1, i + 1, [...prev, array[i]]);
+    if (k == set.length) {
+        return [set];
     }
-}
-function combine2(array) {
-    return [...combine(array, 2)];
+    if (k == 1) {
+        combs = [];
+        for (i = 0; i < set.length; i++) {
+            combs.push([set[i]]);
+        }
+        return combs;
+    }
+    combs = [];
+    for (i = 0; i < set.length - k + 1; i++) {
+        head = set.slice(i, i + 1);
+        tailcombs = k_combinations(set.slice(i + 1), k - 1);
+        for (j = 0; j < tailcombs.length; j++) {
+            combs.push([...head, ...tailcombs[j]]);
+        }
+    }
+    return combs;
 }
 const pairs = (array) => {
     const pairs = [];
@@ -79,10 +54,15 @@ const pairs = (array) => {
 const tri = (i) => {
     return 1 - abs(i % 2 - 1);
 };
+window.addEventListener("resize", ev => {
+    resizeCanvas(windowWidth, windowHeight);
+});
 function setup() {
     console.log("🚀 - Setup initialized - P5 is running");
     createCanvas(windowWidth, windowHeight);
-    frameRate(60);
+    colorMode(HSL);
+    frameRate(fps);
+    smooth();
     speed = createSlider(0, 15, 3, 1);
     speed.position(10, 10);
     speed.style("width", "80px");
@@ -113,7 +93,7 @@ function setup() {
 }
 function mousePressed() {
     speedUp = 5;
-    mouseH = 26;
+    mouseH = 10;
     mouseS = 100;
 }
 function mouseReleased() {
@@ -127,34 +107,34 @@ const distanceNorm = (p1, p2, maxD) => {
 const distanceNormInv = (p1, p2, maxD) => {
     return map(dist(...p1, ...p2), 0, maxD, 1, 0, true);
 };
-const colorD = (h, s, d, maxD, l1 = 70, l2 = 50, a) => {
-    const l = map(d, 0, maxD, l1, l2, true);
-    const ns = map(d, 0, maxD, 1, 0, true);
-    return `hsla(${h}, ${s}%, ${l}%, ${ns})`;
+const colorMap = new Map();
+const colorD = (hue, lumMin = 70, lumMax = 50, alpha = true, distance, maxDistance) => {
+    const h = floor(map(distance, 0, maxDistance * 2, hue, hue - 40, true));
+    const l = floor(map(distance, 0, maxDistance, lumMin, lumMax, true));
+    const a = alpha ? floor(map(distance, 0, maxDistance, 100, 20, true)) / 100 : 1;
+    return color(h, 100, l, a);
 };
-const linePointDistance = (point1, point2, maxD, r1 = 70, r2 = 50, h = 222, s = 100, a = 0.7) => {
-    const d = dist(...point1, ...point2);
+const linePointDistance = (point1, point2, maxD, l1 = 70, l2 = 50, h = 222, alpha, saturation = 100) => {
+    const d = dist(point1[0], point1[1], point2[0], point2[1]);
     if (d < maxD) {
-        linePoint(point1, point2, colorD(h, s, d, maxD, r1, r2, a));
+        linePoint(point1, point2, colorD(h, l1, l2, alpha, d, maxD));
     }
 };
-function linePoint(point1, point2, strokeHex = "#3333CC") {
-    push();
+function linePoint(point1, point2, strokeHex = color("#3333CC")) {
     stroke(strokeHex);
     line(point1[0], point1[1], point2[0], point2[1]);
-    pop();
 }
 let time = 0;
 function draw() {
     push();
-    background(15);
-    colorMode(HSB, 360, 100, 100);
+    background(6);
+    colorMode(HSL, 360, 100, 100);
     noStroke();
     ellipseMode(RADIUS);
-    drawGradient(width / 2, height / 2);
     pop();
     const mouse = [mouseX, mouseY];
     time += deltaTime / 1000 * speedUp;
+    const aspectRatio = height / width;
     const scaleY = 400;
     const middleH = height / 2;
     const startOffset = PI / 6;
@@ -167,13 +147,14 @@ function draw() {
     const topPoints = [];
     const bottomPoints = [];
     const pointSize = scaleY / 20;
-    for (var i = 1; i < pointsPerLine; i++) {
+    for (let i = 1; i < pointsPerLine; i++) {
         push();
         stroke("hsla(222, 75%, 50%, 0.5)");
         const topX = scaleX * (startOffset + stepX * (i + topOffset));
-        const topY = middleH + (scaleY / 2) * sin(startOffset + stepY * i + time);
+        const y = (scaleY / 2) * sin(startOffset + stepY * i + time);
+        const topY = middleH + y;
         const bottomX = scaleX * (startOffset + stepX * i);
-        const bottomY = middleH + (scaleY / 2) * -sin(startOffset + stepY * i + time);
+        const bottomY = middleH - y;
         strokeWeight(pointSize * (distanceNormInv([topX, topY], mouse, scaleY * 1.5)));
         point(topX, topY);
         strokeWeight(pointSize * (distanceNormInv([bottomX, bottomY], mouse, scaleY * 1.5)));
@@ -182,29 +163,36 @@ function draw() {
         bottomPoints.push([bottomX, bottomY]);
         pop();
     }
-    const pointDistance = scaleY * 1.1;
     const lineIntersect = height / 2;
+    drawInterlines(topPoints, bottomPoints, scaleY);
+    drawSelflines(topPoints, bottomPoints, scaleX);
+    drawMouselines(topPoints, bottomPoints, scaleX);
+}
+function drawInterlines(topPoints, bottomPoints, scaleY) {
+    const pointDistance = scaleY * 1.1;
     if (interLinesChecked) {
         topPoints.forEach(tp => bottomPoints
             .forEach(bp => {
-            linePointDistance(tp, bp, pointDistance, 60, 0);
+            linePointDistance(tp, bp, pointDistance, 60, 0, 222, true);
         }));
     }
+}
+function drawSelflines(topPoints, bottomPoints, scaleX) {
     const selfLinesDistance = scaleX * 1.25;
     if (selfLinesChecked) {
-        combine2(topPoints).forEach((points => linePointDistance(points[0], points[1], selfLinesDistance)));
-        combine2(bottomPoints).forEach((points => linePointDistance(points[0], points[1], selfLinesDistance)));
+        k_combinations(topPoints, 2).forEach(((points) => linePointDistance(points[0], points[1], selfLinesDistance, 50, 70, 222, true)));
+        k_combinations(bottomPoints, 2).forEach(((points) => linePointDistance(points[0], points[1], selfLinesDistance, 50, 70, 222, true)));
     }
+}
+function drawMouselines(topPoints, bottomPoints, scaleX) {
     const mouseDistance = (scaleX * 1.25);
+    const mouse = [mouseX, mouseY];
     if (mouseLinesChecked) {
-        push();
-        stroke("#5555FF");
-        topPoints.forEach(tp => linePointDistance(tp, mouse, mouseDistance, 50, 30, mouseH, mouseS));
-        bottomPoints.forEach(bp => linePointDistance(bp, mouse, mouseDistance, 50, 30, mouseH, mouseS));
-        pop();
+        topPoints.forEach(tp => linePointDistance(tp, mouse, mouseDistance, 60, 30, 22, true));
+        bottomPoints.forEach(bp => linePointDistance(bp, mouse, mouseDistance, 60, 30, 22, true));
     }
 }
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
 }
-//# sourceMappingURL=../src/src/build.js.map
+//# sourceMappingURL=build.js.map

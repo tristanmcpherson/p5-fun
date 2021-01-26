@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "mapRoot": "./src/",
     "module": "none",
     "noImplicitAny": true,
     "outFile": "./build/build.js",
@@ -9,7 +8,6 @@
     "lib": ["DOM", "ES2019"],
     "rootDir": "src",
     "sourceMap": true,
-    "sourceRoot": "./src/",
     "target": "es6"
   }
 }
