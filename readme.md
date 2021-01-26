@@ -58,7 +58,7 @@ function draw() {
 }
 ```
 
-### TODO: Conver to Instanced Mode
+### TODO: Convert to Instanced Mode
 
 ```typescript
 var sketch = (p: p5) => {
